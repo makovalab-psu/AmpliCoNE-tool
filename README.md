@@ -172,7 +172,7 @@ gem-2-wig -I <REF.fa.gem> -i <OUT_MAPPABILITY.mappability> -o <WIG_OUT_MAPPABILI
 wig2bed <WIG_OUT_MAPPABILITY.wig> <REF_MAPPABILITY.bed>
 ```
 
-- Reference specific RepeatMasker output (BED format)
+- Reference specific RepeatMasker output (.out file)
 
 - Reference specific Tandem Repeat Finder output (BED format)
 
@@ -209,7 +209,7 @@ For human ampliconic genes the gene definition file is available [here](http://w
 ### Step 3: Generate Ychr_annotation file using AmpliCoNE-build
 
 ```
-sh AmpliCoNE-build.sh -c chrY -i <REF.fasta> -m <REF_MAPPABILITY.bed> -r <REF_REPMASK.bed> -t <REF_TRF.bed> -g <Gene_Definition.tab> -o chrY_annotation.tab
+sh AmpliCoNE-build.sh -c chrY -i <REF.fasta> -m <REF_MAPPABILITY.bed> -r <REF_REPMASK.out> -t <REF_TRF.bed> -g <Gene_Definition.tab> -o chrY_annotation.tab
 ```
 
 Use the output file (annotation file) from AmpliCoNE-build.sh and gene definition file to run AmpliCoNE-count.py and estimate the gene family copy numbers.
