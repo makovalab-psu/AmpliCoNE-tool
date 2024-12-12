@@ -3,7 +3,6 @@ import sys
 import re
 import pandas
 import numpy
-import subprocess
 import copy
 import argparse
 import os
@@ -13,7 +12,7 @@ parser=argparse.ArgumentParser(
     description='''Ampliconic Gene Copy Number Estimator (AmpliCoNE-copy) : Estimates the copy number of the 9 ampliconic gene families on Human Y chromosome. ''',
     epilog="""Email: v.rahul.simham@gmail.com for errors and bugs""")
 parser.add_argument('--BAM', '-b', required=True, help=' Indexed BAM file. (Aligned using BWA MEM) ', metavar='<BAM>')
-parser.add_argument('--CHR', '-c', required=True, help=' Chromosome annotation as found in the BAM header file. ', choices=['Y','chrY'])
+parser.add_argument('--CHR', '-c', required=True, help=' Chromosome annotation as found in the BAM header file. ')
 parser.add_argument('--GENE_DEF', '-g', required=True, help=' Gene family and control gene definition ')
 parser.add_argument('--ANNOTATION', '-a', required=True, help=' Y Chromosome annotation (GCper, Mappability,InformativeSites) ')
 parser.add_argument('--LENGTH','-l', nargs='?', type=int, default=57227415, help='Length of the Y chromosome in the reference (hg38).(default: %(default)s) ')
@@ -45,21 +44,21 @@ SFile=args.ANNOTATION
 
 #CHECK IF FILES EXIST
 if os.path.exists(BAM):
-	print "Using "+str(BAM)+" as input BAM file\n"
+	print("Using "+str(BAM)+" as input BAM file\n")
 else:
-	print "ERROR: Cannot find input BAM file."
+	print("ERROR: Cannot find input BAM file.")
 	sys.exit(0)
 
 if os.path.exists(GFile):
-	print "Specified path to Gene definition file : "+str(GFile)+"\n"
+	print("Specified path to Gene definition file : "+str(GFile)+"\n")
 else:
-	print"ERROR: Cannot find Gene definition file "+str(GFile)+" . Please check the code to update the correct path/file name."
+	print("ERROR: Cannot find Gene definition file "+str(GFile)+" . Please check the code to update the correct path/file name.")
 	sys.exit(0)
 
 if os.path.exists(SFile):
-	print "Specified path to Chromosome Summary file : "+str(SFile)+"\n"
+	print("Specified path to Chromosome Summary file : "+str(SFile)+"\n")
 else:
-	print"ERROR: Cannot find the file with Chromosome summary file: "+str(SFile)+" with mappability, GCcontent and repeats information. Please check the code to update the correct path/file name."
+	print("ERROR: Cannot find the file with Chromosome summary file: "+str(SFile)+" with mappability, GCcontent and repeats information. Please check the code to update the correct path/file name.")
 	sys.exit(0)
 
 
@@ -79,7 +78,7 @@ def Get_Read_Length(bam_file):
 			
 
 if Get_Read_Length(BAM) < 100:
-	print 'ERROR: Read length of the Input BAM is less than required length of 100 bases. (Tested first 1000 reads)'
+	print('ERROR: Read length of the Input BAM is less than required length of 100 bases. (Tested first 1000 reads)')
 	sys.exit(0)
 
 	
@@ -132,7 +131,7 @@ def Count_MisMatch_Deletions_MDZtag(mismatch_char,mismatch_val):
 		i+=1
 	return [MM,position]
 
-print "\rFiltering reads for perfect matches"	
+print("\rFiltering reads for perfect matches")	
 #Read the input bam file and parse for proper read pairs and then look for reads with atleast 88 perfect matches in the first 90 base pairs of the read
 filtered_read_start_position=BAM+"_"+CHR+"_alignmentSTARTPosition.tab"
 with pysam.AlignmentFile(BAM, "rb") as bamfile, open(filtered_read_start_position, "w") as w:
@@ -140,11 +139,11 @@ with pysam.AlignmentFile(BAM, "rb") as bamfile, open(filtered_read_start_positio
 	for read in bamfile.fetch(CHR):
 		if read_type=="PAIRED":
 			if read.flag == 99 or read.flag == 163 or read.flag == 83 or read.flag == 147:
-				cigar_char=re.split('\d+',read.cigarstring)[1:] #parse the character
-				cigar_val=re.split('\D+',read.cigarstring)[:-1] #parse the number
+				cigar_char=re.split(r'\d+',read.cigarstring)[1:] #parse the character
+				cigar_val=re.split(r'\D+',read.cigarstring)[:-1] #parse the number
 				mismatch=read.get_tag('MD')
-				mismatch_char=re.split('\d+',mismatch)[1:] #parse the character
-				mismatch_val=re.split('\D+',mismatch)	   #parse the number
+				mismatch_char=re.split(r'\d+',mismatch)[1:] #parse the character
+				mismatch_val=re.split(r'\D+',mismatch)	   #parse the number
 				if int(cigar_val[0])>=90 and int(mismatch_val[0])>=90:
 					w.write(str(read.query_name)+"\t"+str(read.reference_start+1)+"\n")
 				elif int(cigar_val[0])>=90 and int(mismatch_val[0])< 90:
@@ -164,13 +163,13 @@ with pysam.AlignmentFile(BAM, "rb") as bamfile, open(filtered_read_start_positio
 				if i==1000000:
 					i=0
 					j+=1
-					print "\rProcessed "+str(j)+"000000 lines"
+					print("\rProcessed "+str(j)+"000000 lines")
 		elif read_type=="SINGLE":
-			cigar_char=re.split('\d+',read.cigarstring)[1:] #parse the character
-			cigar_val=re.split('\D+',read.cigarstring)[:-1] #parse the number
+			cigar_char=re.split(r'\d+',read.cigarstring)[1:] #parse the character
+			cigar_val=re.split(r'\D+',read.cigarstring)[:-1] #parse the number
 			mismatch=read.get_tag('MD')
-			mismatch_char=re.split('\d+',mismatch)[1:] #parse the character
-			mismatch_val=re.split('\D+',mismatch)	   #parse the number
+			mismatch_char=re.split(r'\d+',mismatch)[1:] #parse the character
+			mismatch_val=re.split(r'\D+',mismatch)	   #parse the number
 			if int(cigar_val[0])>=90 and int(mismatch_val[0])>=90:
 				w.write(str(read.query_name)+"\t"+str(read.reference_start+1)+"\n")
 			elif int(cigar_val[0])>=90 and int(mismatch_val[0])< 90:
@@ -190,10 +189,10 @@ with pysam.AlignmentFile(BAM, "rb") as bamfile, open(filtered_read_start_positio
 			if i==1000000:
 				i=0
 				j+=1
-				print "\rProcessed "+str(j)+"000000 lines"
+				print("\rProcessed "+str(j)+"000000 lines")
 
-print "\rFinished filtering reads"
-print "\rObtaining chromosome wide read start counts."
+print("\rFinished filtering reads")
+print("\rObtaining chromosome wide read start counts.")
 
 #Get the read start counts from alignment start positions
 counts={}
@@ -212,7 +211,7 @@ with open(filtered_read_start_position,"r") as r:
 
 temp=0
 val=[]
-for pos in sorted(counts.keys(),key=int):
+for pos in sorted(list(counts.keys()),key=int):
 	diff=int(pos)-temp
 	if diff==1:
 		val+=[counts[pos]]
@@ -234,12 +233,12 @@ val+=[0]*(tail_cov)
 		# file.write(str(val[index])+ "\n")
 
 ##Get the list of genes whose read depth is needed to be calculated		
-print "\rObtaining the gene list"
+print("\rObtaining the gene list")
 
 Gene_list={}
 Family_list={}
-with open(GFile, "rU") as g: 
-	header=g.next()	#START	END	TYPE
+with open(GFile, "r") as g: 
+	header=next(g)	#START	END	TYPE
 	for line in g:
 		col=line.rstrip('\n').split("\t") 
 		col[2]=col[2].upper()
@@ -251,10 +250,10 @@ with open(GFile, "rU") as g:
 
 
 ##Parse repeat region and add mappability values to RSCcounts
-print "\rLoading the Read start counts (RSC) and Mappability values"
+print("\rLoading the Read start counts (RSC) and Mappability values")
 Data={} # Dictionary to temporarily store values and convert to data-frame later . Saves runtime
-with open(SFile, "rU") as s: 
-	header=s.next() #'Position\tGCpercentage\tMappability\tInformativeSites\n'
+with open(SFile, "r") as s: 
+	header=next(s) #'Position\tGCpercentage\tMappability\tInformativeSites\n'
 	for row in s:
 		col=row.rstrip('\n').split("\t") 
 		#Data[int(col[0])]={'Position': int(col[0]), 'Mappability':float(col[2]), 'GC':float(col[1]), 'RSC':int(val[int(col[0])-1]), 'tInformativeSites':int(col[3]) } #Converting 1 based to 0 based by subtracting 1
@@ -271,7 +270,7 @@ Summary_data=Summary_data.values
 Control_data=Control_data.values
 mean_Control=numpy.mean(Control_data[:,3]) 
 
-print "\rPerforming the GC correction"
+print("\rPerforming the GC correction")
 ###CONTROL & GC correction
 
 #Create 100 windows each having all sites on Y with GC% within that window. Example: window: 0-0.99,1-1.99,2-2.99. All position on Y with GC% >=1 and <2 fall in 1-1.99 window.
@@ -316,7 +315,7 @@ def Get_ControlGene_coverage(Gene_info,Y_Summary_data) : 		# Y_Summary_data=['Po
 	Unique_data=Gene_Summary[(Gene_Summary[:,1]== 1).nonzero()]		#parse sites with mappability 1
 	return [Gene_info[2],numpy.mean(Unique_data[:,3]),str(Gene_info[2])+"_"+str(Gene_info[0])+"_"+str(Gene_info[1])] 
 
-print "\rObtaining the gene level RSC"
+print("\rObtaining the gene level RSC")
 Control_coverage=Control_region_coverage(GCcor_Summary_data)
 
 Temp_Coverage={}
@@ -346,7 +345,7 @@ Allgene_CopyNumber=Allgene.copy()
 Allgene_CopyNumber[:,1]=Allgene_CopyNumber[:,1]/Control_coverage
 Allgene_CopyNumber[Allgene_CopyNumber[:,1].argsort()]
 
-print "\rCaliculating CN values and printing"
+print("\rCaliculating CN values and printing")
 Ampliconic_Genes=Gene_coverage.values[(Gene_coverage.values[:,1]!="CONTROL").nonzero()]
 AG_CopyNumber=Ampliconic_Genes.copy()
 AG_CopyNumber[:,1]=AG_CopyNumber[:,1]/Control_coverage
