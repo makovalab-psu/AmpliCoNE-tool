@@ -6,14 +6,14 @@ A tool to estimate the copy number of ampliconic gene families in human Y chromo
 ## Installation
 
 ### Dependencies
-To run AmpliCoNE, you need the following list of tools and packages:
+For the latest version of AmpliCoNE we recommend using Python 3.9 or later. The tool was tested and works well with the following list of tools and packages:
 ```
-Python 2.7.x
-Numpy	1.14.2
-Pandas 0.23.4	
-Pysam	0.15.0.1
-Biopython 1.71
-Bowtie2 version 2.2.9 
+Python 3.12.x
+Numpy	2.1.2
+Pandas 2.2.3	
+Pysam	0.22.1
+Biopython 1.84
+Bowtie2 version 2.4.2 
 ```
 
 #### Steps to install the dependencies using conda 
@@ -26,11 +26,11 @@ name: amplicone
 channels:
   - bioconda
 dependencies:
-  - python=2.7
-  - pandas=0.23.4
-  - numpy=1.14.2
-  - pysam=0.15.0.1
-  - biopython=1.71
+  - python=3.12
+  - pandas=2.2.3
+  - numpy=2.1.2
+  - pysam=0.22.1
+  - biopython=1.84
   - bowtie2=2.*
 ```
 Use the amplicone-environment.yml file to create an environment named "amplicone"
@@ -44,9 +44,7 @@ source activate amplicone
 
 ### Install AmpliCoNE
 
-Once you installed the things above, do the following:
-
-Clone the repository https://github.com/makovalab-psu/AmpliCoNE-tool by running:
+Once the above mentioned dependencies are installed, clone the AmpliCone tool from the repository https://github.com/makovalab-psu/AmpliCoNE-tool by running:
 ```
 git clone https://github.com/makovalab-psu/AmpliCoNE-tool.git
 ```
@@ -89,7 +87,7 @@ ls test_data/
 
 ### AmpliCoNE-count usage
 
-AmpliCoNE-count.py takes the gene definition file, annotation file and BAM file as input to estimate the copy number of the nine ampliconic gene families. In addition, the name of the Y chromosome (chrY|Y) as defined in reference and its sequence length are required parameters. 
+AmpliCoNE-count.py takes the gene definition file, annotation file and BAM file as input to estimate the copy number of the nine ampliconic gene families. In addition, the name of the Y chromosome as defined in reference and its sequence length are required parameters. 
 
 ```
 python AmpliCoNE-count.py --GENE_DEF hg38_amplicone_files/gene_definition_hg38.tab --ANNOTATION hg38_amplicone_files/hg38_Ychromosome_annotation.tab --BAM test_data/test.bam --CHR Y --LENGTH 57227415
@@ -149,8 +147,8 @@ AmpliCoNE-count will generate two output files:
 
 ## AmpliCoNE usage with other reference genomes / species
 
-Before running in a different species, you must first perform steps 1-3 below. 
-This needs to be run only once, and then the resulting files can be reused when analyzing dataset from same species. 
+Before running the tool on a dataset from a different species, you must first perform steps 1-3 below. 
+This needs to be run only once, and the resulting files can be reused when analyzing datasets from the same species. 
 After these steps, AmpliCoNE-count can be run for each sample to estimate copy number, as described above.
 
 
@@ -176,6 +174,8 @@ wig2bed <WIG_OUT_MAPPABILITY.wig> <REF_MAPPABILITY.bed>
 
 - Reference specific Tandem Repeat Finder output (BED format)
 
+Note: RepeatMasker and Tandem Repeat Finder only need to be run on the Y chromosome. 
+
 ### Step2: Generate gene definition file
 
 
@@ -186,7 +186,7 @@ wig2bed <WIG_OUT_MAPPABILITY.wig> <REF_MAPPABILITY.bed>
 NOTE: For gene copies in control, the gene family name (3rd column) should be "CONTROL".(case sensitive)
 
 **How to generate the file**:
-- Identify a representative gene for each gene family and extract its sequence from NCBI.
+- Identify a representative gene for each gene family and extract its sequence from NCBI. (E.g. most common variant or consensus sequence built from individual gene copies within the gene family.)
 - BLAT the representative gene sequence against reference genome to identify all locations with greater than 99% identity.
 - Represent each location identified with its start and end location followed by the gene family name.
 
@@ -209,7 +209,7 @@ For human ampliconic genes the gene definition file is available [here](http://w
 ### Step 3: Generate Ychr_annotation file using AmpliCoNE-build
 
 ```
-sh AmpliCoNE-build.sh -c chrY -i <REF.fasta> -m <REF_MAPPABILITY.bed> -r <REF_REPMASK.out> -t <REF_TRF.bed> -g <Gene_Definition.tab> -o chrY_annotation.tab
+sh AmpliCoNE-build.py -c <chrY> -i <REF.fasta> -m <REF_MAPPABILITY.bed> -r <REF_REPMASK.out> -t <REF_TRF.bed> -g <Gene_Definition.tab> -o chrY_annotation.tab
 ```
 
 Use the output file (annotation file) from AmpliCoNE-build.sh and gene definition file to run AmpliCoNE-count.py and estimate the gene family copy numbers.

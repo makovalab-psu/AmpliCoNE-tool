@@ -55,8 +55,9 @@ def check_and_get_chr_len(chr_len_file):
 
 def calculate_GC_content(ref, chr_y, tmpdir, outfile):
 
-    if os.path.exists(outfile):
-        print(f"found: GC content file {outfile}")
+    length_file = f"{tmpdir}/{chr_y}_length.txt"
+    if os.path.exists(outfile) and os.path.exists(length_file):
+        print(f"found: GC content file {outfile} and length file {length_file}")
         print("skipping GC content calculation")
         return
 
@@ -106,9 +107,12 @@ def calculate_GC_content(ref, chr_y, tmpdir, outfile):
         file.write("GC\n")
         for index in range(len(GC)):
             file.write(str(GC[index])+ "\n")
+        
+    with open(f"{length_file}", "w") as file:
+        file.write(str(chr_len)+ "\n")
 
 
-def chop_sliding_reference_reads(ref, chr_y, tmpdir, r_len, gene_file, fasta):
+def chop_sliding_reference_reads(ref, chr_y, tmpdir, r_len, gene_file, fasta, debug):
 
 
     if os.path.exists(fasta):
@@ -137,7 +141,7 @@ def chop_sliding_reference_reads(ref, chr_y, tmpdir, r_len, gene_file, fasta):
     found = False
     refFH = open(ref,"r")
     for chr_record in SeqIO.parse(refFH, "fasta"):
-        print(f"record id {chr_record.id} is it same asi chr_y {chr_y}?")
+        # print(f"record id {chr_record.id} is it same asi chr_y {chr_y}?")
 
         if chr_record.id == chr_y:
             
@@ -145,8 +149,9 @@ def chop_sliding_reference_reads(ref, chr_y, tmpdir, r_len, gene_file, fasta):
             found = True
             fasta_output=open(fasta,"w")
             for i in range(len(chr)-r_len):
-                if i % 1000000 == 0:
-                    print(f"Processing position {i} of {len(chr)}")
+                if debug:
+                    if i % 1000000 == 0:
+                        print(f"Processing position {i} of {len(chr)}")
             
                 if any(start <= i <= end for start, end in gene_intervals):
                     r_seq=str(chr[i:i+r_len])
@@ -161,12 +166,12 @@ def chop_sliding_reference_reads(ref, chr_y, tmpdir, r_len, gene_file, fasta):
         exit(1)
 
 
-def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informative_sites, informative_list):
+def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informative_sites_file, informative_list, force):
 
     len_chr = check_and_get_chr_len(f"{tmpdir}/{chr_y}_length.txt")
 
-    if os.path.exists(informative_list) and os.path.exists(informative_sites):
-        print(f"found: informative sites files {informative_list} and {informative_sites}")
+    if os.path.exists(informative_list) and os.path.exists(informative_sites_file) and not force:
+        print(f"found: informative sites files {informative_list} and {informative_sites_file}")
         print("skipping informative sites parsing")
         return
         
@@ -213,19 +218,23 @@ def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informa
     # print("Identifying informative sites")
     Family_list_readMapped={}
     for genefamily in Family_location:
-        print("---------Gene Family---------")
-        print(genefamily)
+        if debug:
+            print("---------Gene Family---------")
+            print(genefamily)
     
         if genefamily.upper() == 'CONTROL':
-            print("Skipping CONTROL gene family")
+            if debug:
+                print("Skipping CONTROL gene family")
             continue
-        elif len(Family_location[genefamily])==1 : #skip if gene family has only one gene
-            print("Skipping gene family with only one gene")
-            continue
+        # elif len(Family_location[genefamily])==1 : #skip if gene family has only one gene
+        #     if debug:
+        #       print("Skipping gene family with only one gene")
+        #     continue
         else:
             f_size = len(Family_location[genefamily])
-            print(f"size: {f_size}")
-            print("-----------------------------")
+            if debug:
+                print(f"size: {f_size}")
+                print("-----------------------------")
             eachgene_readMapped_perlocation={}
             #print genefamily
             for i in range(f_size):
@@ -253,10 +262,17 @@ def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informa
     Genefamily_output=open(informative_list,"w")
     informative_sites = [0]*len_chr
     for key in Family_list_readMapped:
+        if debug:
+            print (key)
         #Intersect sets of reads mapped to genes in gene family 
         info_sites=reduce(set.intersection,Family_list_readMapped[key].values())
+
         size=len(Family_location[key])
+        if debug:
+            print("Size of family: ", size)
         for k in info_sites:
+            if key == "TSPY":
+                print(len(k))
             if len(k)==size:
                 x=list(k)
                 x.append(key)
@@ -267,7 +283,7 @@ def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informa
     Genefamily_output.close()
 
 
-    informative_output=open(informative_sites,"w")
+    informative_output=open(informative_sites_file,"w")
     informative_output.write("Informative_Sites\n")
     for index in range(len(informative_sites)):
         informative_output.write(str(informative_sites[index])+ "\n")
@@ -275,7 +291,7 @@ def parse_informative_sites(SAM, gene_file, debug, r_len, tmpdir, chr_y, informa
     informative_output.close()
 
 
-def map_fasta_to_sam(fasta, sam, tmpdir):
+def map_fasta_to_sam(fasta, sam, tmpdir, reference):
 
     # check if bowtie-index is present
     run_bowtie2_index = True
@@ -292,12 +308,29 @@ def map_fasta_to_sam(fasta, sam, tmpdir):
 
     if run_bowtie2_index:
         print("creating bowtie2 index")
-        result = subprocess.run(["bowtie2-build", fasta, f"{tmpdir}/bowtie2_index"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(result.stdout)
-        print(result.stderr)
+        try:
+            result = subprocess.run(
+                    ["bowtie2-build", reference, f"{tmpdir}/bowtie2_index"],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+        except subprocess.CalledProcessError as e:
+                print(f"Error: {e.stderr}")
+                raise
+
 
     print("mapping fasta to sam")
-    result = subprocess.run(["bowtie2", "-k", "15", "--threads","32","-x", f"{tmpdir}/bowtie2_index", "-f", fasta, "-S", sam], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        result = subprocess.run(
+                    ["bowtie2", "-k", "25", "--threads","32","-x", f"{tmpdir}/bowtie2_index", "-f", fasta, "-S", sam], 
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+    except subprocess.CalledProcessError as e:
+            print(f"Error: {e.stderr}")
+            raise
 
 
 def parse_repeatmasker_output(repeatmasker, chr_y, tmpdir, outfile):
@@ -434,6 +467,7 @@ def main():
     parser.add_argument('--tmpdir','-d', help="temporary directory", default="/tmp")
     parser.add_argument('--debug','-D', help="debug mode", action="store_true")
     parser.add_argument('--read-length','-l', help="read length", default=101)
+    parser.add_argument('--force','-f', help="rerun step(s) even if intermediate files exist", action="store_true")
     parser.add_argument('--step','-s', help="run single step of the build process", default=0)
 
     args = parser.parse_args()
@@ -448,14 +482,14 @@ def main():
     tmpdir = args.tmpdir
     debug = args.debug
     r_len = args.read_length
-    step = 0
-    step = int(args.step) 
+    step = int(args.step)
+    force = args.force
 
     time_tracker = TimeTracker()
 
 
     # these files are created in the individual steps
-    # if they are present, individual steps can be run
+    # if they are present, individual steps can be run independently 
     gc_file = f"{tmpdir}/{chr_y}_GC_Content.txt"
     fasta = f"{tmpdir}/Sliding_window{r_len}bp_Reference_reads.fasta"
     sam = f"{tmpdir}/Sliding_window{r_len}bp_Reference_reads.sam"
@@ -487,7 +521,7 @@ def main():
     if step == 0 or step == 2:
         if debug:
             time_tracker.print_time_diff("Create Fasta file with chopped sliding reference reads")
-        chop_sliding_reference_reads(reference, chr_y, tmpdir, r_len, gene_definition, fasta)
+        chop_sliding_reference_reads(reference, chr_y, tmpdir, r_len, gene_definition, fasta, debug)
 
     if step == 0 or step == 3:
         if not os.path.exists(fasta):
@@ -496,7 +530,7 @@ def main():
             exit(1)
         if debug:
             time_tracker.print_time_diff("Create SAM file by mapping fasta file to reference")
-        map_fasta_to_sam(fasta, sam, tmpdir)
+        map_fasta_to_sam(fasta, sam, tmpdir, reference)
 
     if step == 0 or step == 4:
         if debug:
@@ -516,7 +550,7 @@ def main():
     if step == 0 or step == 7:
         if debug:
             time_tracker.print_time_diff("Parse informative sites")
-        parse_informative_sites(sam, gene_definition, debug, r_len, tmpdir, chr_y, informative_sites, informative_list)
+        parse_informative_sites(sam, gene_definition, debug, r_len, tmpdir, chr_y, informative_sites, informative_list, force)
 
     if step == 0 or step == 8:
         if debug:
